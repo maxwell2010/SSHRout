@@ -129,6 +129,7 @@ const translations = {
     uptime: "Аптайм",
     load: "Load",
     close: "Закрыть",
+    duplicateLimit: "Уже открыто максимум 2 одинаковые сессии",
     handshakeTimeout:
       "Таймаут SSH handshake: проверь хост/порт, запущен ли sshd на сервере, не блокирует ли firewall/VPN, и увеличь таймаут в настройках сессии.",
     language: "Язык"
@@ -188,6 +189,7 @@ const translations = {
     uptime: "Uptime",
     load: "Load",
     close: "Close",
+    duplicateLimit: "Maximum 2 duplicate sessions are already open",
     handshakeTimeout:
       "SSH handshake timeout: check host/port, sshd, firewall/VPN, and increase session timeout.",
     language: "Language"
@@ -326,6 +328,7 @@ function App() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [serverRailOpen, setServerRailOpen] = useState(false);
   const [openConnections, setOpenConnections] = useState<OpenConnection[]>([]);
+  const [connectingSavedIds, setConnectingSavedIds] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [status, setStatus] = useState<ConnectionState>("idle");
   const [remotePath, setRemotePath] = useState("/");
@@ -363,6 +366,9 @@ function App() {
     () => openConnections.find((item) => item.sessionId === sessionId)?.metrics ?? null,
     [openConnections, sessionId]
   );
+
+  const openConnectionsRef = useRef<OpenConnection[]>([]);
+  const connectingSavedIdsRef = useRef<string[]>([]);
 
   const setLanguage = useCallback((nextLanguage: Language) => {
     setLanguageState(nextLanguage);
@@ -437,6 +443,14 @@ function App() {
   useEffect(() => {
     activeSessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    openConnectionsRef.current = openConnections;
+  }, [openConnections]);
+
+  useEffect(() => {
+    connectingSavedIdsRef.current = connectingSavedIds;
+  }, [connectingSavedIds]);
 
   useEffect(() => {
     const close = () => setContextMenu(null);
@@ -603,28 +617,56 @@ function App() {
     setMessage(`${t.selected}: ${session.name}`);
   }
 
-  function useSavedSession(session: SavedSession) {
-    const snapshotConnections = withActiveSnapshot(openConnections);
+  function useSavedSession(session: SavedSession, forceDuplicate = false) {
+    const snapshotConnections = withActiveSnapshot(openConnectionsRef.current);
     setOpenConnections(snapshotConnections);
-    const alreadyOpen = snapshotConnections.find((item) => item.savedId === session.id);
-    if (alreadyOpen) {
+    const matchingOpen = snapshotConnections.filter((item) => item.savedId === session.id);
+    const alreadyOpen = matchingOpen[0];
+    if (alreadyOpen && !forceDuplicate) {
       switchOpenConnection(alreadyOpen);
       setServerRailOpen(false);
+      return;
+    }
+    if (matchingOpen.length >= 2) {
+      switchOpenConnection(matchingOpen[0]);
+      setMessage(t.duplicateLimit);
+      return;
+    }
+    if (connectingSavedIdsRef.current.includes(session.id)) {
+      setMessage(`${t.connecting}...`);
       return;
     }
     if (connected) {
       const selectedForm = toForm(session);
       setForm(selectedForm);
       setActiveSavedId(session.id);
-      void connect(undefined, selectedForm);
+      void connect(undefined, selectedForm, forceDuplicate);
       return;
     }
     selectSavedSession(session);
   }
 
-  async function connect(event?: FormEvent, sourceForm: FormState = form) {
+  async function connect(event?: FormEvent, sourceForm: FormState = form, forceDuplicate = false) {
     event?.preventDefault();
     setError(null);
+    if (sourceForm.id) {
+      const matchingOpen = openConnectionsRef.current.filter((item) => item.savedId === sourceForm.id);
+      const alreadyOpen = matchingOpen[0];
+      if (alreadyOpen && !forceDuplicate) {
+        switchOpenConnection(alreadyOpen);
+        return;
+      }
+      if (matchingOpen.length >= 2) {
+        switchOpenConnection(matchingOpen[0]);
+        setMessage(t.duplicateLimit);
+        return;
+      }
+      if (connectingSavedIdsRef.current.includes(sourceForm.id)) {
+        setMessage(`${t.connecting}...`);
+        return;
+      }
+      setConnectingSavedIds((current) => (current.includes(sourceForm.id) ? current : [...current, sourceForm.id]));
+    }
     setStatus("connecting");
     setMessage(`${t.connecting}...`);
 
@@ -659,6 +701,10 @@ function App() {
     } catch (err) {
       setStatus("idle");
       showError(err);
+    } finally {
+      if (sourceForm.id) {
+        setConnectingSavedIds((current) => current.filter((id) => id !== sourceForm.id));
+      }
     }
   }
 
@@ -798,8 +844,9 @@ function App() {
                   const selectedForm = toForm(session);
                   setForm(selectedForm);
                   setActiveSavedId(session.id);
-                  void connect(undefined, selectedForm);
+                  void connect(undefined, selectedForm, true);
                 }}
+                disabled={connectingSavedIds.includes(session.id)}
               >
                 <span className="session-icon" style={{ backgroundColor: session.color }}>
                   <SessionIconView size={17} />
@@ -808,6 +855,20 @@ function App() {
                   <strong>{session.name}</strong>
                   <small>{session.username}@{session.host}</small>
                 </span>
+                {connected ? (
+                  <span className="session-actions">
+                    <button
+                      type="button"
+                      title="+1"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        useSavedSession(session, true);
+                      }}
+                    >
+                      +1
+                    </button>
+                  </span>
+                ) : null}
               </button>
             );
           })}

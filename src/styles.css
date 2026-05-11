@@ -167,7 +167,7 @@ input:focus {
 
 .saved-session {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   width: 100%;
@@ -176,6 +176,18 @@ input:focus {
   border: 1px solid transparent;
   background: transparent;
   text-align: left;
+}
+
+.session-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.session-actions button {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .saved-session.active {
