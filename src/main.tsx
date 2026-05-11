@@ -334,6 +334,7 @@ function App() {
   const terminalHostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const activeSessionIdRef = useRef<string | null>(null);
 
   const connected = status === "connected" && sessionId;
   const ActiveIcon = iconMap[form.icon];
@@ -370,8 +371,25 @@ function App() {
     setOpenConnections((current) => current.map((item) => (item.sessionId === id ? { ...item, ...patch } : item)));
   }, []);
 
+  const withActiveSnapshot = useCallback(
+    (connections: OpenConnection[]) =>
+      connections.map((item) =>
+        item.sessionId === sessionId
+          ? {
+              ...item,
+              form,
+              remotePath,
+              entries,
+              selectedEntry
+            }
+          : item
+      ),
+    [entries, form, remotePath, selectedEntry, sessionId]
+  );
+
   const switchOpenConnection = useCallback(
     (connection: OpenConnection) => {
+      setOpenConnections((current) => withActiveSnapshot(current));
       setForm(connection.form);
       setActiveSavedId(connection.savedId);
       setSessionId(connection.sessionId);
@@ -381,12 +399,12 @@ function App() {
       setStatus("connected");
       setEditorOpen(false);
       setContextMenu(null);
-      setMessage(connection.metrics ? `${connection.metrics.memory.usedPercent}% RAM` : translations.ru.ready);
+      setMessage(connection.metrics ? `${connection.metrics.memory.usedPercent}% RAM` : t.ready);
       terminalRef.current?.clear();
       if (connection.terminalText) terminalRef.current?.write(connection.terminalText);
       window.setTimeout(() => fitAddonRef.current?.fit(), 20);
     },
-    []
+    [t.ready, withActiveSnapshot]
   );
 
   const showError = useCallback((value: unknown) => {
@@ -412,6 +430,10 @@ function App() {
     const offLanguage = window.sshRoute.onLanguageChanged((nextLanguage) => setLanguage(nextLanguage));
     return offLanguage;
   }, [language, setLanguage]);
+
+  useEffect(() => {
+    activeSessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   useEffect(() => {
     const close = () => setContextMenu(null);
@@ -454,10 +476,10 @@ function App() {
             : item
         )
       );
-      if (id === sessionId) terminalRef.current?.write(data);
+      if (id === activeSessionIdRef.current) terminalRef.current?.write(data);
     });
     const offClosed = window.sshRoute.onSessionClosed((id) => {
-      if (id === sessionId) {
+      if (id === activeSessionIdRef.current) {
         setStatus("idle");
         setSessionId(null);
         setMessage(t.connectionClosed);
@@ -467,7 +489,7 @@ function App() {
       offData();
       offClosed();
     };
-  }, [sessionId, t.connectionClosed]);
+  }, [t.connectionClosed]);
 
   useEffect(() => {
     if (!terminalHostRef.current || terminalRef.current) return;
@@ -488,7 +510,7 @@ function App() {
     terminal.open(terminalHostRef.current);
     fitAddon.fit();
     terminal.onData((data) => {
-      if (sessionId) void window.sshRoute.writeTerminal(sessionId, data);
+      if (activeSessionIdRef.current) void window.sshRoute.writeTerminal(activeSessionIdRef.current, data);
     });
 
     terminalRef.current = terminal;
@@ -496,8 +518,8 @@ function App() {
 
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
-      if (sessionId) {
-        void window.sshRoute.resizeTerminal(sessionId, {
+      if (activeSessionIdRef.current) {
+        void window.sshRoute.resizeTerminal(activeSessionIdRef.current, {
           cols: terminal.cols,
           rows: terminal.rows
         });
@@ -511,7 +533,7 @@ function App() {
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     window.setTimeout(() => fitAddonRef.current?.fit(), 40);
@@ -579,7 +601,9 @@ function App() {
   }
 
   function useSavedSession(session: SavedSession) {
-    const alreadyOpen = openConnections.find((item) => item.savedId === session.id);
+    const snapshotConnections = withActiveSnapshot(openConnections);
+    setOpenConnections(snapshotConnections);
+    const alreadyOpen = snapshotConnections.find((item) => item.savedId === session.id);
     if (alreadyOpen) {
       switchOpenConnection(alreadyOpen);
       setServerRailOpen(false);
@@ -639,7 +663,7 @@ function App() {
     if (!sessionId) return;
     const closingId = sessionId;
     await window.sshRoute.disconnect(sessionId);
-    const remaining = openConnections.filter((item) => item.sessionId !== closingId);
+    const remaining = withActiveSnapshot(openConnections).filter((item) => item.sessionId !== closingId);
     setOpenConnections(remaining);
     const next = remaining[0];
     if (next) {

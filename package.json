@@ -1,6 +1,6 @@
 {
   "name": "sshroute",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Windows SSH client with terminal and remote file manager",
   "main": "dist-electron/main.js",
   "scripts": {
