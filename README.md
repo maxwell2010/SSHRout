@@ -78,13 +78,19 @@ Build the Android preview APK:
 npm run android:build-debug
 ```
 
+The regular Android build command also creates a locally installable preview APK on this branch:
+
+```powershell
+npm run android:build
+```
+
 The local APK is generated here:
 
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The Android preview release on GitHub uses a debug-signed APK so it can be installed and launched on test devices. Current Android limitation: this preview includes the mobile UI shell, but the native Android SSH/SFTP bridge is not implemented yet. The Windows desktop app remains the fully working version.
+The Android preview uses debug signing so it can be installed and launched on test devices. Current Android limitation: file upload/download pickers are not implemented yet.
 
 ## Releases
 
