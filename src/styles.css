@@ -621,6 +621,75 @@ label {
   font-size: 13px;
 }
 
+.terminal-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.open-session-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.session-tab {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  max-width: 190px;
+  min-height: 30px;
+  padding: 0 6px 0 8px;
+  color: #c9d4e1;
+  border: 1px solid #303844;
+  border-radius: 7px;
+  background: #111820;
+  cursor: pointer;
+}
+
+.session-tab.active {
+  color: #f1f5f9;
+  background: #223043;
+  border-color: #4b647f;
+}
+
+.session-tab > span:not(.tab-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: #071114;
+  border-radius: 5px;
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  min-height: 20px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #93a4b7;
+}
+
+.tab-close:hover {
+  color: #ff9b9b;
+  background: rgba(255, 155, 155, 0.12);
+}
+
 .status {
   display: inline-block;
   max-width: 420px;

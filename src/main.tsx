@@ -24,7 +24,8 @@ import {
   Shield,
   TerminalSquare,
   Trash2,
-  Upload
+  Upload,
+  X
 } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
@@ -127,6 +128,7 @@ const translations = {
     disk: "Диск",
     uptime: "Аптайм",
     load: "Load",
+    close: "Закрыть",
     handshakeTimeout:
       "Таймаут SSH handshake: проверь хост/порт, запущен ли sshd на сервере, не блокирует ли firewall/VPN, и увеличь таймаут в настройках сессии.",
     language: "Язык"
@@ -185,6 +187,7 @@ const translations = {
     disk: "Disk",
     uptime: "Uptime",
     load: "Load",
+    close: "Close",
     handshakeTimeout:
       "SSH handshake timeout: check host/port, sshd, firewall/VPN, and increase session timeout.",
     language: "Language"
@@ -388,8 +391,8 @@ function App() {
   );
 
   const switchOpenConnection = useCallback(
-    (connection: OpenConnection) => {
-      setOpenConnections((current) => withActiveSnapshot(current));
+    (connection: OpenConnection, snapshotCurrent = true) => {
+      if (snapshotCurrent) setOpenConnections((current) => withActiveSnapshot(current));
       setForm(connection.form);
       setActiveSavedId(connection.savedId);
       setSessionId(connection.sessionId);
@@ -661,16 +664,24 @@ function App() {
 
   async function disconnect() {
     if (!sessionId) return;
-    const closingId = sessionId;
-    await window.sshRoute.disconnect(sessionId);
-    const remaining = withActiveSnapshot(openConnections).filter((item) => item.sessionId !== closingId);
+    await closeOpenConnection(sessionId);
+  }
+
+  async function closeOpenConnection(connectionId: string) {
+    const isActive = connectionId === sessionId;
+    await window.sshRoute.disconnect(connectionId);
+    const remaining = withActiveSnapshot(openConnections).filter((item) => item.sessionId !== connectionId);
     setOpenConnections(remaining);
+
+    if (!isActive) return;
+
     const next = remaining[0];
     if (next) {
-      switchOpenConnection(next);
+      switchOpenConnection(next, false);
       setMessage(t.disconnected);
       return;
     }
+
     setSessionId(null);
     setStatus("idle");
     setEntries([]);
@@ -1081,9 +1092,46 @@ function App() {
 
       <section className="terminal-pane">
         <header className="terminal-header">
-          <div>
+          <div className="terminal-title-group">
             <Server size={18} />
-            <span>{status === "connected" ? form.name : t.terminal}</span>
+            {openConnections.length > 0 ? (
+              <div className="open-session-tabs">
+                {openConnections.map((connection) => {
+                  const TabIcon = iconMap[connection.form.icon] || Server;
+                  return (
+                    <div
+                      key={connection.sessionId}
+                      className={connection.sessionId === sessionId ? "session-tab active" : "session-tab"}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => switchOpenConnection(connection)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") switchOpenConnection(connection);
+                      }}
+                      title={`${connection.form.name} (${connection.form.username}@${connection.form.host})`}
+                    >
+                      <span className="tab-icon" style={{ backgroundColor: connection.form.color }}>
+                        <TabIcon size={13} />
+                      </span>
+                      <span>{connection.form.name || connection.form.host}</span>
+                      <button
+                        className="tab-close"
+                        type="button"
+                        title={t.close}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void closeOpenConnection(connection.sessionId);
+                        }}
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <span>{t.terminal}</span>
+            )}
           </div>
           <div>
             <TerminalSquare size={18} />
