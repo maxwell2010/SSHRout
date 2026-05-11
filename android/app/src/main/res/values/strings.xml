@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SSHRout</string>
+    <string name="title_activity_main">SSHRout</string>
+    <string name="package_name">com.maxwell2010.sshrout</string>
+    <string name="custom_url_scheme">com.maxwell2010.sshrout</string>
+</resources>

@@ -68,6 +68,24 @@ npm run dist
 
 The installer will be created in the `release/` directory.
 
+## Android Preview Branch
+
+The `android-version` branch contains an Android/Capacitor preview build.
+
+Build the Android release APK:
+
+```powershell
+npm run android:build
+```
+
+The local APK is generated here:
+
+```text
+android/app/build/outputs/apk/release/app-release-unsigned.apk
+```
+
+Current Android limitation: this preview includes the mobile UI shell, but the native Android SSH/SFTP bridge is not implemented yet. The Windows desktop app remains the fully working version.
+
 ## Releases
 
 GitHub releases are intended to contain the Windows installer produced by `npm run dist`.

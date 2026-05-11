@@ -29,8 +29,11 @@ import {
 } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
+import { ensurePlatformApi } from "./platform";
 import type { AuthMode, ConnectionConfig, RemoteEntry, SavedSession, SessionIcon } from "../electron/types";
 import type { RemoteMetrics } from "../electron/types";
+
+ensurePlatformApi();
 
 type ConnectionState = "idle" | "connecting" | "connected";
 type Language = "ru" | "en";
