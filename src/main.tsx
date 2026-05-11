@@ -338,12 +338,12 @@ function App() {
   const connected = status === "connected" && sessionId;
   const ActiveIcon = iconMap[form.icon];
   const t = translations[language];
-  const layoutClass = connected
-    ? serverRailOpen
-      ? "app-shell work-mode rail-open"
-      : "app-shell work-mode rail-closed"
-    : editorOpen
-      ? "app-shell setup-mode editor-open"
+  const layoutClass = editorOpen
+    ? "app-shell setup-mode editor-open"
+    : connected
+      ? serverRailOpen
+        ? "app-shell work-mode rail-open"
+        : "app-shell work-mode rail-closed"
       : "app-shell setup-mode editor-closed";
 
   const patchForm = useCallback((patch: Partial<FormState>) => {
@@ -560,9 +560,10 @@ function App() {
   }
 
   function newSession() {
-    setForm(initialForm);
+    setForm({ ...initialForm, name: t.newSession });
     setActiveSavedId("");
     setEditorOpen(true);
+    setServerRailOpen(false);
     setSelectedEntry(null);
     setContextMenu(null);
     setMessage(t.newSession);
@@ -572,6 +573,7 @@ function App() {
     setForm(toForm(session));
     setActiveSavedId(session.id);
     setEditorOpen(true);
+    setServerRailOpen(false);
     setError(null);
     setMessage(`${t.selected}: ${session.name}`);
   }
