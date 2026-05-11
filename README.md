@@ -72,19 +72,19 @@ The installer will be created in the `release/` directory.
 
 The `android-version` branch contains an Android/Capacitor preview build.
 
-Build the Android release APK:
+Build the Android preview APK:
 
 ```powershell
-npm run android:build
+npm run android:build-debug
 ```
 
 The local APK is generated here:
 
 ```text
-android/app/build/outputs/apk/release/app-release-unsigned.apk
+android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Current Android limitation: this preview includes the mobile UI shell, but the native Android SSH/SFTP bridge is not implemented yet. The Windows desktop app remains the fully working version.
+The Android preview release on GitHub uses a debug-signed APK so it can be installed and launched on test devices. Current Android limitation: this preview includes the mobile UI shell, but the native Android SSH/SFTP bridge is not implemented yet. The Windows desktop app remains the fully working version.
 
 ## Releases
 

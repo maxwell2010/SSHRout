@@ -11,6 +11,7 @@
     "android:init": "capacitor add android",
     "android:sync": "npm run build:web && capacitor sync android",
     "android:build": "npm run android:sync && cd android && gradlew.bat assembleRelease",
+    "android:build-debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
     "build:web": "tsc -p tsconfig.json && vite build",
     "start": "electron ."
   },
