@@ -770,3 +770,329 @@ label {
   font-size: 10px;
   font-weight: 800;
 }
+
+.mobile-nav {
+  display: none;
+}
+
+@media (max-width: 760px), (pointer: coarse) and (max-width: 960px) {
+  body {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  button {
+    min-height: 42px;
+  }
+
+  input {
+    min-height: 42px;
+    font-size: 16px;
+  }
+
+  .app-shell,
+  .setup-mode.editor-closed,
+  .setup-mode.editor-open,
+  .work-mode.rail-closed,
+  .work-mode.rail-open {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    width: 100vw;
+    height: 100dvh;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .sessions-rail,
+  .sidebar,
+  .terminal-pane {
+    width: 100vw;
+    min-width: 0;
+    border-right: 0;
+  }
+
+  .sessions-rail {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .rail-title {
+    min-height: 54px;
+    padding: 0 16px;
+  }
+
+  .new-session-button {
+    margin: 10px 12px;
+  }
+
+  .saved-session-list {
+    padding: 0 8px 88px;
+  }
+
+  .saved-session {
+    min-height: 58px;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    padding: 8px 10px;
+  }
+
+  .session-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .setup-mode.editor-closed.mobile-view-servers .sessions-rail,
+  .setup-mode.editor-open.mobile-view-servers .sessions-rail,
+  .work-mode.mobile-view-servers .sessions-rail {
+    display: flex;
+  }
+
+  .setup-mode.editor-open.mobile-view-servers {
+    grid-template-rows: minmax(170px, 34dvh) minmax(0, 1fr);
+  }
+
+  .setup-mode.editor-open.mobile-view-servers .sidebar {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    border-top: 1px solid #262d36;
+  }
+
+  .mobile-view-servers .sidebar .work-header,
+  .mobile-view-servers .sidebar .file-tools,
+  .mobile-view-servers .sidebar .file-list,
+  .mobile-view-servers .terminal-pane,
+  .mobile-view-files .sessions-rail,
+  .mobile-view-files .terminal-pane,
+  .mobile-view-terminal .sessions-rail,
+  .mobile-view-terminal .sidebar {
+    display: none;
+  }
+
+  .work-mode.mobile-view-servers .sidebar {
+    display: none;
+  }
+
+  .mobile-view-files .sidebar {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: calc(100dvh - 58px);
+  }
+
+  .mobile-view-files .sidebar .brand,
+  .mobile-view-files .sidebar .connection-form {
+    display: none;
+  }
+
+  .mobile-view-files .sidebar .work-header,
+  .mobile-view-files .sidebar .file-tools,
+  .mobile-view-files .sidebar .file-list {
+    display: grid;
+  }
+
+  .mobile-view-terminal .terminal-pane {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - 58px);
+  }
+
+  .setup-mode .terminal-pane {
+    height: calc(100dvh - 58px);
+  }
+
+  .brand {
+    padding: 12px 16px;
+  }
+
+  .brand h1 {
+    font-size: 17px;
+  }
+
+  .connection-form {
+    align-content: start;
+    max-width: none;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px 16px 86px;
+  }
+
+  .setup-mode .connection-form,
+  .setup-mode .brand {
+    max-width: none;
+  }
+
+  .form-grid {
+    grid-template-columns: 104px 1fr;
+  }
+
+  .session-style-row {
+    grid-template-columns: 1fr;
+  }
+
+  .icon-picker,
+  .color-picker {
+    overflow-x: auto;
+    padding: 2px;
+  }
+
+  .icon-picker button {
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .color-picker button {
+    width: 30px;
+    min-width: 30px;
+    min-height: 30px;
+  }
+
+  .form-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .work-header {
+    min-height: 58px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .work-header button {
+    min-width: 42px;
+    padding: 0 10px;
+  }
+
+  .work-header button:first-of-type {
+    display: none;
+  }
+
+  .file-tools {
+    padding: 10px;
+  }
+
+  .path-row {
+    grid-template-columns: 1fr 44px;
+  }
+
+  .toolbar {
+    grid-template-columns: repeat(5, minmax(42px, 1fr));
+  }
+
+  .file-head,
+  .file-row {
+    grid-template-columns: minmax(130px, 1fr) 78px 66px;
+    gap: 8px;
+  }
+
+  .file-head span:last-child,
+  .file-row span:last-child {
+    display: none;
+  }
+
+  .file-head {
+    padding: 8px 10px;
+  }
+
+  .file-scroll {
+    padding: 4px 6px 96px;
+  }
+
+  .file-row {
+    min-height: 42px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .context-menu {
+    right: 12px;
+    left: 12px !important;
+    top: auto !important;
+    bottom: 70px;
+    width: auto;
+  }
+
+  .context-menu button {
+    min-height: 42px;
+  }
+
+  .terminal-header {
+    min-height: 52px;
+    padding: 0 10px;
+    gap: 10px;
+  }
+
+  .terminal-header > div:last-child {
+    flex: 0 1 auto;
+  }
+
+  .status {
+    max-width: 120px;
+  }
+
+  .open-session-tabs {
+    max-width: calc(100vw - 130px);
+  }
+
+  .session-tab {
+    max-width: 150px;
+    min-height: 34px;
+  }
+
+  .terminal-host {
+    padding: 8px;
+  }
+
+  .xterm {
+    font-size: 13px;
+  }
+
+  .metrics-bar {
+    bottom: 58px;
+    min-height: 30px;
+    padding: 4px 6px;
+  }
+
+  .metric-pill {
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+  .mobile-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    min-height: 58px;
+    padding: 5px 8px max(5px, env(safe-area-inset-bottom));
+    border-top: 1px solid #303844;
+    background: #111820;
+  }
+
+  .mobile-nav button {
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    min-height: 48px;
+    padding: 2px 4px;
+    border: 0;
+    background: transparent;
+    color: #93a4b7;
+    font-size: 11px;
+  }
+
+  .mobile-nav button.active {
+    color: #071114;
+    background: #63e6be;
+  }
+
+  .mobile-nav button:disabled {
+    opacity: 0.35;
+  }
+}

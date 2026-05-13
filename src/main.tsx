@@ -37,6 +37,7 @@ ensurePlatformApi();
 
 type ConnectionState = "idle" | "connecting" | "connected";
 type Language = "ru" | "en";
+type MobileView = "servers" | "files" | "terminal";
 
 type ContextMenuState = {
   entry: RemoteEntry;
@@ -101,6 +102,7 @@ const translations = {
     save: "Сохранить",
     delete: "Удалить",
     servers: "Серверы",
+    files: "Файлы",
     terminal: "Терминал",
     ready: "Готово",
     name: "Имя",
@@ -161,6 +163,7 @@ const translations = {
     save: "Save",
     delete: "Delete",
     servers: "Servers",
+    files: "Files",
     terminal: "Terminal",
     ready: "Ready",
     name: "Name",
@@ -330,6 +333,7 @@ function App() {
   const [activeSavedId, setActiveSavedId] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [serverRailOpen, setServerRailOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>("servers");
   const [openConnections, setOpenConnections] = useState<OpenConnection[]>([]);
   const [connectingSavedIds, setConnectingSavedIds] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -348,13 +352,14 @@ function App() {
   const connected = status === "connected" && sessionId;
   const ActiveIcon = iconMap[form.icon];
   const t = translations[language];
-  const layoutClass = editorOpen
+  const layoutClassBase = editorOpen
     ? "app-shell setup-mode editor-open"
     : connected
       ? serverRailOpen
         ? "app-shell work-mode rail-open"
         : "app-shell work-mode rail-closed"
       : "app-shell setup-mode editor-closed";
+  const layoutClass = `${layoutClassBase} mobile-view-${mobileView}`;
 
   const patchForm = useCallback((patch: Partial<FormState>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -411,6 +416,7 @@ function App() {
       setStatus("connected");
       setEditorOpen(false);
       setContextMenu(null);
+      setMobileView("files");
       setMessage(connection.metrics ? `${connection.metrics.memory.usedPercent}% RAM` : t.ready);
       terminalRef.current?.clear();
       if (connection.terminalText) terminalRef.current?.write(connection.terminalText);
@@ -557,7 +563,7 @@ function App() {
 
   useEffect(() => {
     window.setTimeout(() => fitAddonRef.current?.fit(), 40);
-  }, [connected, editorOpen]);
+  }, [connected, editorOpen, mobileView]);
 
   useEffect(() => {
     if (!sessionId || !connected) return;
@@ -606,6 +612,7 @@ function App() {
     setActiveSavedId("");
     setEditorOpen(true);
     setServerRailOpen(false);
+    setMobileView("servers");
     setSelectedEntry(null);
     setContextMenu(null);
     setMessage(t.newSession);
@@ -616,6 +623,7 @@ function App() {
     setActiveSavedId(session.id);
     setEditorOpen(true);
     setServerRailOpen(false);
+    setMobileView("servers");
     setError(null);
     setMessage(`${t.selected}: ${session.name}`);
   }
@@ -701,6 +709,7 @@ function App() {
       setOpenConnections((current) => [opened, ...current]);
       setEditorOpen(false);
       setServerRailOpen(false);
+      setMobileView("files");
     } catch (err) {
       setStatus("idle");
       showError(err);
@@ -1204,6 +1213,34 @@ function App() {
         </header>
         <div className="terminal-host" ref={terminalHostRef} />
       </section>
+      <nav className="mobile-nav" aria-label="Mobile sections">
+        <button
+          type="button"
+          className={mobileView === "servers" ? "active" : ""}
+          onClick={() => setMobileView("servers")}
+        >
+          <Server size={18} />
+          <span>{t.servers}</span>
+        </button>
+        <button
+          type="button"
+          className={mobileView === "files" ? "active" : ""}
+          disabled={!connected}
+          onClick={() => setMobileView("files")}
+        >
+          <Folder size={18} />
+          <span>{t.files}</span>
+        </button>
+        <button
+          type="button"
+          className={mobileView === "terminal" ? "active" : ""}
+          disabled={!connected}
+          onClick={() => setMobileView("terminal")}
+        >
+          <TerminalSquare size={18} />
+          <span>{t.terminal}</span>
+        </button>
+      </nav>
       {connected ? (
         <footer className="metrics-bar">
           <span className="metric-pill">
