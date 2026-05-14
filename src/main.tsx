@@ -344,6 +344,7 @@ function App() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [message, setMessage] = useState(translations.ru.ready);
   const [error, setError] = useState<string | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const terminalHostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -359,7 +360,7 @@ function App() {
         ? "app-shell work-mode rail-open"
         : "app-shell work-mode rail-closed"
       : "app-shell setup-mode editor-closed";
-  const layoutClass = `${layoutClassBase} mobile-view-${mobileView}`;
+  const layoutClass = `${layoutClassBase} mobile-view-${mobileView}${keyboardOpen ? " keyboard-open" : ""}`;
 
   const patchForm = useCallback((patch: Partial<FormState>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -482,6 +483,32 @@ function App() {
 
     document.addEventListener("focusin", keepFocusedFieldVisible);
     return () => document.removeEventListener("focusin", keepFocusedFieldVisible);
+  }, []);
+
+  useEffect(() => {
+    const updateKeyboardState = () => {
+      const viewport = window.visualViewport;
+      const focused = document.activeElement instanceof HTMLInputElement;
+      const keyboardHeight = viewport
+        ? Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+        : 0;
+      document.documentElement.style.setProperty("--keyboard-height", `${keyboardHeight}px`);
+      setKeyboardOpen(focused || keyboardHeight > 120);
+    };
+
+    const delayedUpdate = () => window.setTimeout(updateKeyboardState, 120);
+    window.visualViewport?.addEventListener("resize", updateKeyboardState);
+    window.visualViewport?.addEventListener("scroll", updateKeyboardState);
+    document.addEventListener("focusin", delayedUpdate);
+    document.addEventListener("focusout", delayedUpdate);
+    updateKeyboardState();
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateKeyboardState);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardState);
+      document.removeEventListener("focusin", delayedUpdate);
+      document.removeEventListener("focusout", delayedUpdate);
+    };
   }, []);
 
   const loadDirectory = useCallback(
