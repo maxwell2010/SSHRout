@@ -471,6 +471,19 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const keepFocusedFieldVisible = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      window.setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }, 280);
+    };
+
+    document.addEventListener("focusin", keepFocusedFieldVisible);
+    return () => document.removeEventListener("focusin", keepFocusedFieldVisible);
+  }, []);
+
   const loadDirectory = useCallback(
     async (path?: string) => {
       if (!sessionId) return;
