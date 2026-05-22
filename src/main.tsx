@@ -91,6 +91,7 @@ const translations = {
     key: "Ключ",
     privateKeyPath: "Путь к приватному ключу",
     chooseKeyFile: "Выбрать файл ключа",
+    privateKeyRequired: "Выберите приватный ключ для подключения.",
     passphrase: "Фраза ключа",
     timeout: "Таймаут",
     keepalive: "Keepalive",
@@ -152,6 +153,7 @@ const translations = {
     key: "Key",
     privateKeyPath: "Private key path",
     chooseKeyFile: "Choose key file",
+    privateKeyRequired: "Choose a private key before connecting.",
     passphrase: "Passphrase",
     timeout: "Timeout",
     keepalive: "Keepalive",
@@ -700,6 +702,12 @@ function App() {
   async function connect(event?: FormEvent, sourceForm: FormState = form, forceDuplicate = false) {
     event?.preventDefault();
     setError(null);
+    if (sourceForm.authMode === "key" && !sourceForm.privateKeyPath.trim()) {
+      setError(t.privateKeyRequired);
+      setMessage(t.privateKeyRequired);
+      setMobileView("servers");
+      return;
+    }
     if (sourceForm.id) {
       const matchingOpen = openConnectionsRef.current.filter((item) => item.savedId === sourceForm.id);
       const alreadyOpen = matchingOpen[0];
@@ -848,8 +856,12 @@ function App() {
   }
 
   async function choosePrivateKey() {
-    const privateKeyPath = await window.sshRoute.choosePrivateKey();
-    if (privateKeyPath) patchForm({ privateKeyPath });
+    try {
+      const privateKeyPath = await window.sshRoute.choosePrivateKey();
+      if (privateKeyPath) patchForm({ privateKeyPath });
+    } catch (err) {
+      showError(err);
+    }
   }
 
   function permissionsToOctal(permissions: string) {

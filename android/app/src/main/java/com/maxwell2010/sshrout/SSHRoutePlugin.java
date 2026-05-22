@@ -1,16 +1,19 @@
 package com.maxwell2010.sshrout;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
-import android.util.Base64;
+import android.net.Uri;
 
+import androidx.activity.result.ActivityResult;
+
+import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelShell;
@@ -21,6 +24,8 @@ import com.jcraft.jsch.SftpATTRS;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -99,7 +104,11 @@ public class SSHRoutePlugin extends Plugin {
                 JSONObject config = new JSONObject(call.getData().toString());
                 String id = UUID.randomUUID().toString();
                 JSch jsch = new JSch();
-                String privateKeyPath = config.optString("privateKeyPath", "");
+                String authMode = config.optString("authMode", "password");
+                String privateKeyPath = resolvePrivateKeyPath(config.optString("privateKeyPath", ""));
+                if ("key".equals(authMode) && privateKeyPath.isEmpty()) {
+                    throw new Exception("Private key file is required.");
+                }
                 if (!privateKeyPath.isEmpty()) {
                     String passphrase = config.optString("passphrase", "");
                     if (passphrase.isEmpty()) {
@@ -114,7 +123,7 @@ public class SSHRoutePlugin extends Plugin {
                     config.optString("host"),
                     config.optInt("port", 22)
                 );
-                if ("password".equals(config.optString("authMode", "password"))) {
+                if ("password".equals(authMode)) {
                     ssh.setPassword(config.optString("password", ""));
                 }
 
@@ -285,9 +294,41 @@ public class SSHRoutePlugin extends Plugin {
 
     @PluginMethod
     public void choosePrivateKey(PluginCall call) {
-        JSObject result = new JSObject();
-        result.put("path", JSONObject.NULL);
-        call.resolve(result);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivityForResult(call, intent, "handlePrivateKeyPickerResult");
+    }
+
+    @ActivityCallback
+    private void handlePrivateKeyPickerResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+
+        try {
+            if (result.getResultCode() != android.app.Activity.RESULT_OK || result.getData() == null) {
+                JSObject empty = new JSObject();
+                empty.put("path", JSONObject.NULL);
+                call.resolve(empty);
+                return;
+            }
+
+            Uri uri = result.getData().getData();
+            if (uri == null) {
+                JSObject empty = new JSObject();
+                empty.put("path", JSONObject.NULL);
+                call.resolve(empty);
+                return;
+            }
+
+            getContext().getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            String path = copyPrivateKeyToInternalFile(uri);
+            JSObject response = new JSObject();
+            response.put("path", path);
+            call.resolve(response);
+        } catch (Exception error) {
+            call.reject(error.getMessage(), error);
+        }
     }
 
     @PluginMethod
@@ -327,6 +368,39 @@ public class SSHRoutePlugin extends Plugin {
         ChannelSftp sftp = (ChannelSftp) session.ssh.openChannel("sftp");
         sftp.connect();
         return sftp;
+    }
+
+    private String resolvePrivateKeyPath(String privateKeyPath) throws Exception {
+        if (privateKeyPath == null || privateKeyPath.trim().isEmpty()) return "";
+        String trimmed = privateKeyPath.trim();
+        if (trimmed.startsWith("content://")) {
+            return copyPrivateKeyToInternalFile(Uri.parse(trimmed));
+        }
+        return trimmed;
+    }
+
+    private String copyPrivateKeyToInternalFile(Uri uri) throws Exception {
+        File directory = new File(getContext().getFilesDir(), "ssh_keys");
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new Exception("Unable to create private key storage directory.");
+        }
+
+        File target = new File(directory, "key_" + System.currentTimeMillis());
+        try (
+            InputStream input = getContext().getContentResolver().openInputStream(uri);
+            OutputStream output = new FileOutputStream(target)
+        ) {
+            if (input == null) throw new Exception("Unable to read selected private key file.");
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = input.read(buffer)) >= 0) {
+                output.write(buffer, 0, length);
+            }
+        }
+
+        target.setReadable(true, true);
+        target.setWritable(true, true);
+        return target.getAbsolutePath();
     }
 
     private void withSftp(PluginCall call, SftpAction action) {
