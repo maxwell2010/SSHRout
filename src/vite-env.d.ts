@@ -27,6 +27,8 @@ declare global {
       uploadFiles(id: string, remoteDir: string): Promise<string[]>;
       downloadFile(id: string, remotePath: string): Promise<string | null>;
       choosePrivateKey(): Promise<string | null>;
+      readClipboardText(): string;
+      writeClipboardText(text: string): void;
       setLanguage(language: "ru" | "en"): Promise<void>;
       onLanguageChanged(callback: (language: "ru" | "en") => void): () => void;
       onTerminalData(callback: (id: string, data: string) => void): () => void;

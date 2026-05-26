@@ -41,6 +41,12 @@ type ContextMenuState = {
   y: number;
 } | null;
 
+type TerminalContextMenuState = {
+  x: number;
+  y: number;
+  hasSelection: boolean;
+} | null;
+
 type FormState = {
   id: string;
   name: string;
@@ -130,6 +136,10 @@ const translations = {
     uptime: "Аптайм",
     load: "Load",
     close: "Закрыть",
+    copy: "Копировать",
+    paste: "Вставить",
+    copied: "Скопировано",
+    pasted: "Вставлено",
     duplicateLimit: "Уже открыто максимум 2 одинаковые сессии",
     handshakeTimeout:
       "Таймаут SSH handshake: проверь хост/порт, запущен ли sshd на сервере, не блокирует ли firewall/VPN, и увеличь таймаут в настройках сессии.",
@@ -191,6 +201,10 @@ const translations = {
     uptime: "Uptime",
     load: "Load",
     close: "Close",
+    copy: "Copy",
+    paste: "Paste",
+    copied: "Copied",
+    pasted: "Pasted",
     duplicateLimit: "Maximum 2 duplicate sessions are already open",
     handshakeTimeout:
       "SSH handshake timeout: check host/port, sshd, firewall/VPN, and increase session timeout.",
@@ -337,12 +351,15 @@ function App() {
   const [entries, setEntries] = useState<RemoteEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<RemoteEntry | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [terminalContextMenu, setTerminalContextMenu] = useState<TerminalContextMenuState>(null);
   const [message, setMessage] = useState(translations.ru.ready);
   const [error, setError] = useState<string | null>(null);
   const terminalHostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const activeSessionIdRef = useRef<string | null>(null);
+  const copyTerminalSelectionRef = useRef<() => void>(() => undefined);
+  const pasteToTerminalRef = useRef<() => void>(() => undefined);
 
   const connected = status === "connected" && sessionId;
   const ActiveIcon = iconMap[form.icon];
@@ -410,6 +427,7 @@ function App() {
       setStatus("connected");
       setEditorOpen(false);
       setContextMenu(null);
+      setTerminalContextMenu(null);
       setMessage(connection.metrics ? `${connection.metrics.memory.usedPercent}% RAM` : t.ready);
       terminalRef.current?.clear();
       if (connection.terminalText) terminalRef.current?.write(connection.terminalText);
@@ -455,7 +473,10 @@ function App() {
   }, [connectingSavedIds]);
 
   useEffect(() => {
-    const close = () => setContextMenu(null);
+    const close = () => {
+      setContextMenu(null);
+      setTerminalContextMenu(null);
+    };
     window.addEventListener("click", close);
     window.addEventListener("keydown", close);
     return () => {
@@ -510,6 +531,37 @@ function App() {
     };
   }, [t.connectionClosed]);
 
+  const copyTerminalSelection = useCallback(() => {
+    const selectedText = terminalRef.current?.getSelection() || "";
+    if (!selectedText) return;
+    window.sshRoute.writeClipboardText(selectedText);
+    setMessage(t.copied);
+  }, [t.copied]);
+
+  const pasteToTerminal = useCallback(() => {
+    const text = window.sshRoute.readClipboardText();
+    if (!text || !activeSessionIdRef.current) return;
+    void window.sshRoute.writeTerminal(activeSessionIdRef.current, text);
+    terminalRef.current?.focus();
+    setMessage(t.pasted);
+  }, [t.pasted]);
+
+  const openTerminalContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu(null);
+    setTerminalContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      hasSelection: Boolean(terminalRef.current?.hasSelection())
+    });
+  }, []);
+
+  useEffect(() => {
+    copyTerminalSelectionRef.current = copyTerminalSelection;
+    pasteToTerminalRef.current = pasteToTerminal;
+  }, [copyTerminalSelection, pasteToTerminal]);
+
   useEffect(() => {
     if (!terminalHostRef.current || terminalRef.current) return;
 
@@ -523,6 +575,23 @@ function App() {
         cursor: "#63e6be",
         selectionBackground: "#2f7dd3"
       }
+    });
+    terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      if (event.type !== "keydown") return true;
+      const key = event.key.toLowerCase();
+      const hasModifier = event.ctrlKey || event.metaKey;
+
+      if ((key === "c" && hasModifier && (event.shiftKey || terminal.hasSelection())) || (event.key === "Insert" && event.ctrlKey)) {
+        copyTerminalSelectionRef.current();
+        return false;
+      }
+
+      if ((key === "v" && hasModifier) || (event.key === "Insert" && event.shiftKey)) {
+        pasteToTerminalRef.current();
+        return false;
+      }
+
+      return true;
     });
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
@@ -828,6 +897,7 @@ function App() {
     event.preventDefault();
     setSelectedEntry(entry);
     if (sessionId) updateOpenConnection(sessionId, { selectedEntry: entry });
+    setTerminalContextMenu(null);
     setContextMenu({ entry, x: event.clientX, y: event.clientY });
   }
 
@@ -1210,7 +1280,34 @@ function App() {
             <span className={error ? "status error" : "status"}>{message}</span>
           </div>
         </header>
-        <div className="terminal-host" ref={terminalHostRef} />
+        <div className="terminal-host" ref={terminalHostRef} onContextMenu={openTerminalContextMenu} />
+        {terminalContextMenu ? (
+          <div
+            className="context-menu terminal-context-menu"
+            style={{ left: terminalContextMenu.x, top: terminalContextMenu.y }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              disabled={!terminalContextMenu.hasSelection}
+              onClick={() => {
+                copyTerminalSelection();
+                setTerminalContextMenu(null);
+              }}
+            >
+              {t.copy}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                pasteToTerminal();
+                setTerminalContextMenu(null);
+              }}
+            >
+              {t.paste}
+            </button>
+          </div>
+        ) : null}
       </section>
       {connected ? (
         <footer className="metrics-bar">

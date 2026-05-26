@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { clipboard, contextBridge, ipcRenderer } from "electron";
 import { ConnectionConfig, RemoteEntry, SavedSession, TerminalSize } from "./types";
 
 const api = {
@@ -20,6 +20,8 @@ const api = {
   uploadFiles: (id: string, remoteDir: string) => ipcRenderer.invoke("sftp:upload", id, remoteDir),
   downloadFile: (id: string, remotePath: string) => ipcRenderer.invoke("sftp:download", id, remotePath),
   choosePrivateKey: () => ipcRenderer.invoke("dialog:private-key"),
+  readClipboardText: () => clipboard.readText(),
+  writeClipboardText: (text: string) => clipboard.writeText(text),
   setLanguage: (language: "ru" | "en") => ipcRenderer.invoke("language:set", language),
   onLanguageChanged: (callback: (language: "ru" | "en") => void) => {
     const listener = (_event: Electron.IpcRendererEvent, language: "ru" | "en") => callback(language);
