@@ -42,7 +42,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -77,6 +78,27 @@ input {
 }
 
 input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16);
+}
+
+textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  color: #e5edf6;
+  border: 1px solid #303844;
+  border-radius: 6px;
+  background: #0d1117;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  outline: none;
+  resize: none;
+}
+
+textarea:focus {
   border-color: #38bdf8;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16);
 }
@@ -600,6 +622,87 @@ label {
 
 .context-menu button.danger {
   color: #ff9b9b;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 32px 0 32px;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(6, 10, 15, 0.62);
+}
+
+.file-editor-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(980px, calc(100vw - 48px));
+  height: min(720px, calc(100vh - 104px));
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #151a20;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+.file-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 58px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #262d36;
+}
+
+.file-editor-header div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.file-editor-header strong,
+.file-editor-header small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-editor-header small {
+  color: #93a4b7;
+  font-size: 12px;
+}
+
+.file-editor-header button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  padding: 0;
+}
+
+.file-editor-dialog textarea {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+.file-editor-dialog textarea:focus {
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+}
+
+.file-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid #262d36;
+}
+
+.file-editor-actions button {
+  min-width: 150px;
 }
 
 .terminal-pane {

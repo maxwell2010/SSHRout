@@ -19,6 +19,9 @@ const api = {
   chmodPath: (id: string, remotePath: string, mode: number) => ipcRenderer.invoke("sftp:chmod", id, remotePath, mode),
   uploadFiles: (id: string, remoteDir: string) => ipcRenderer.invoke("sftp:upload", id, remoteDir),
   downloadFile: (id: string, remotePath: string) => ipcRenderer.invoke("sftp:download", id, remotePath),
+  readRemoteFile: (id: string, remotePath: string) => ipcRenderer.invoke("sftp:read-file", id, remotePath),
+  writeRemoteFile: (id: string, remotePath: string, content: string) =>
+    ipcRenderer.invoke("sftp:write-file", id, remotePath, content),
   choosePrivateKey: () => ipcRenderer.invoke("dialog:private-key"),
   readClipboardText: () => clipboard.readText(),
   writeClipboardText: (text: string) => clipboard.writeText(text),

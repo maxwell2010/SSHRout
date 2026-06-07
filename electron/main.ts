@@ -478,6 +478,40 @@ ipcMain.handle("sftp:download", async (_event, id: string, remotePath: string) =
   return result.filePath;
 });
 
+ipcMain.handle("sftp:read-file", async (_event, id: string, remotePath: string) => {
+  const sftp = await sftpFor(getSession(id));
+  const attrs = await new Promise<{ size: number }>((resolve, reject) =>
+    sftp.stat(remotePath, (err, stats) => (err ? reject(err) : resolve(stats)))
+  );
+  if (attrs.size > 2 * 1024 * 1024) {
+    throw new Error("File is larger than 2 MB and cannot be edited inline.");
+  }
+
+  const content = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const stream = sftp.createReadStream(remotePath);
+    stream.on("data", (chunk: Buffer | string) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
+
+  if (content.includes(0)) {
+    throw new Error("File looks binary and cannot be edited inline.");
+  }
+
+  return content.toString("utf8");
+});
+
+ipcMain.handle("sftp:write-file", async (_event, id: string, remotePath: string, content: string) => {
+  const sftp = await sftpFor(getSession(id));
+  await new Promise<void>((resolve, reject) => {
+    const stream = sftp.createWriteStream(remotePath);
+    stream.on("error", reject);
+    stream.on("finish", resolve);
+    stream.end(Buffer.from(content, "utf8"));
+  });
+});
+
 ipcMain.handle("dialog:private-key", async () => {
   const win = BrowserWindow.getFocusedWindow() ?? mainWindow;
   const result = await dialog.showOpenDialog(win!, {

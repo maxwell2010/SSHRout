@@ -26,6 +26,8 @@ declare global {
       chmodPath(id: string, remotePath: string, mode: number): Promise<void>;
       uploadFiles(id: string, remoteDir: string): Promise<string[]>;
       downloadFile(id: string, remotePath: string): Promise<string | null>;
+      readRemoteFile(id: string, remotePath: string): Promise<string>;
+      writeRemoteFile(id: string, remotePath: string, content: string): Promise<void>;
       choosePrivateKey(): Promise<string | null>;
       readClipboardText(): string;
       writeClipboardText(text: string): void;

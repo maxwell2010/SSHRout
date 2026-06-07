@@ -47,6 +47,14 @@ type TerminalContextMenuState = {
   hasSelection: boolean;
 } | null;
 
+type FileEditorState = {
+  entry: RemoteEntry;
+  content: string;
+  originalContent: string;
+  loading: boolean;
+  saving: boolean;
+} | null;
+
 type FormState = {
   id: string;
   name: string;
@@ -78,6 +86,7 @@ type OpenConnection = {
 
 const iconOptions: SessionIcon[] = ["server", "terminal", "database", "cloud", "folder", "shield"];
 const colorOptions = ["#63e6be", "#38bdf8", "#f59e0b", "#f97316", "#a78bfa", "#f43f5e"];
+const maxInlineEditBytes = 2 * 1024 * 1024;
 
 const translations = {
   ru: {
@@ -114,6 +123,13 @@ const translations = {
     openPath: "Открыть путь",
     upload: "Загрузить",
     download: "Скачать",
+    editFile: "Редактировать",
+    fileEditor: "Редактор файла",
+    saveChanges: "Сохранить изменения",
+    loadingFile: "Загрузка файла",
+    fileSaved: "Файл сохранен на сервере",
+    fileTooLarge: "Файл больше 2 МБ. Используй скачивание и загрузку для больших файлов.",
+    unsavedChanges: "Есть несохраненные изменения. Закрыть редактор?",
     newFolder: "Новая папка",
     rename: "Переименовать",
     permissions: "Права",
@@ -179,6 +195,13 @@ const translations = {
     openPath: "Open path",
     upload: "Upload",
     download: "Download",
+    editFile: "Edit",
+    fileEditor: "File editor",
+    saveChanges: "Save changes",
+    loadingFile: "Loading file",
+    fileSaved: "File saved to server",
+    fileTooLarge: "File is larger than 2 MB. Use download and upload for large files.",
+    unsavedChanges: "There are unsaved changes. Close the editor?",
     newFolder: "New folder",
     rename: "Rename",
     permissions: "Permissions",
@@ -352,6 +375,7 @@ function App() {
   const [selectedEntry, setSelectedEntry] = useState<RemoteEntry | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [terminalContextMenu, setTerminalContextMenu] = useState<TerminalContextMenuState>(null);
+  const [fileEditor, setFileEditor] = useState<FileEditorState>(null);
   const [message, setMessage] = useState(translations.ru.ready);
   const [error, setError] = useState<string | null>(null);
   const terminalHostRef = useRef<HTMLDivElement | null>(null);
@@ -360,6 +384,7 @@ function App() {
   const activeSessionIdRef = useRef<string | null>(null);
   const copyTerminalSelectionRef = useRef<() => void>(() => undefined);
   const pasteToTerminalRef = useRef<() => void>(() => undefined);
+  const lastTouchOpenRef = useRef<{ path: string; time: number } | null>(null);
 
   const connected = status === "connected" && sessionId;
   const ActiveIcon = iconMap[form.icon];
@@ -818,7 +843,60 @@ function App() {
       await loadDirectory(entry.path);
       return;
     }
+    if (entry.type === "file") {
+      await openFileEditor(entry);
+      return;
+    }
     setSelectedEntry(entry);
+  }
+
+  async function openFileEditor(entry: RemoteEntry) {
+    if (!sessionId || entry.type !== "file") return;
+    setContextMenu(null);
+    setTerminalContextMenu(null);
+    if (entry.size > maxInlineEditBytes) {
+      setError(t.fileTooLarge);
+      setMessage(t.fileTooLarge);
+      return;
+    }
+
+    setError(null);
+    setMessage(`${t.loadingFile}...`);
+    setFileEditor({ entry, content: "", originalContent: "", loading: true, saving: false });
+    try {
+      const content = await window.sshRoute.readRemoteFile(sessionId, entry.path);
+      setFileEditor((current) =>
+        current?.entry.path === entry.path ? { ...current, content, originalContent: content, loading: false } : current
+      );
+      setMessage(`${t.editFile}: ${entry.name}`);
+    } catch (err) {
+      setFileEditor(null);
+      showError(err);
+    }
+  }
+
+  async function saveFileEditor() {
+    if (!sessionId || !fileEditor || fileEditor.loading || fileEditor.saving) return;
+    setFileEditor((current) => (current ? { ...current, saving: true } : current));
+    try {
+      await window.sshRoute.writeRemoteFile(sessionId, fileEditor.entry.path, fileEditor.content);
+      setFileEditor((current) =>
+        current ? { ...current, originalContent: current.content, saving: false } : current
+      );
+      setMessage(t.fileSaved);
+      await loadDirectory(remotePath);
+    } catch (err) {
+      setFileEditor((current) => (current ? { ...current, saving: false } : current));
+      showError(err);
+    }
+  }
+
+  function closeFileEditor() {
+    if (fileEditor && fileEditor.content !== fileEditor.originalContent) {
+      const ok = window.confirm(t.unsavedChanges);
+      if (!ok) return;
+    }
+    setFileEditor(null);
   }
 
   async function makeDirectory() {
@@ -899,6 +977,18 @@ function App() {
     if (sessionId) updateOpenConnection(sessionId, { selectedEntry: entry });
     setTerminalContextMenu(null);
     setContextMenu({ entry, x: event.clientX, y: event.clientY });
+  }
+
+  function handleFilePointerUp(event: React.PointerEvent, entry: RemoteEntry) {
+    if (event.pointerType !== "touch") return;
+    const now = Date.now();
+    const lastTap = lastTouchOpenRef.current;
+    if (lastTap?.path === entry.path && now - lastTap.time < 450) {
+      lastTouchOpenRef.current = null;
+      void openEntry(entry);
+      return;
+    }
+    lastTouchOpenRef.current = { path: entry.path, time: now };
   }
 
   return (
@@ -1157,6 +1247,9 @@ function App() {
             <button title={t.download} disabled={!selectedEntry || selectedEntry.type !== "file"} onClick={() => downloadSelected()}>
               <Download size={16} />
             </button>
+            <button title={t.editFile} disabled={!selectedEntry || selectedEntry.type !== "file"} onClick={() => selectedEntry && openFileEditor(selectedEntry)}>
+              <FileText size={16} />
+            </button>
             <button title={t.newFolder} disabled={!connected} onClick={makeDirectory}>
               <FolderPlus size={16} />
             </button>
@@ -1189,6 +1282,7 @@ function App() {
                     if (sessionId) updateOpenConnection(sessionId, { selectedEntry: entry });
                   }}
                   onDoubleClick={() => openEntry(entry)}
+                  onPointerUp={(event) => handleFilePointerUp(event, entry)}
                   onContextMenu={(event) => openContextMenu(event, entry)}
                 >
                   <span className={`file-name ${visual.className}`}>
@@ -1209,7 +1303,7 @@ function App() {
               onClick={(event) => event.stopPropagation()}
             >
               <button type="button" onClick={() => openEntry(contextMenu.entry)}>
-                {contextMenu.entry.type === "directory" ? t.openFolder : t.selectFile}
+                {contextMenu.entry.type === "directory" ? t.openFolder : t.editFile}
               </button>
               <button
                 type="button"
@@ -1309,6 +1403,49 @@ function App() {
           </div>
         ) : null}
       </section>
+      {fileEditor ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="file-editor-dialog" role="dialog" aria-modal="true" aria-label={t.fileEditor}>
+            <header className="file-editor-header">
+              <div>
+                <strong>{fileEditor.entry.name}</strong>
+                <small>{fileEditor.entry.path}</small>
+              </div>
+              <button type="button" title={t.close} onClick={closeFileEditor}>
+                <X size={16} />
+              </button>
+            </header>
+            <textarea
+              spellCheck={false}
+              value={fileEditor.loading ? `${t.loadingFile}...` : fileEditor.content}
+              disabled={fileEditor.loading || fileEditor.saving}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+                  event.preventDefault();
+                  void saveFileEditor();
+                }
+              }}
+              onChange={(event) =>
+                setFileEditor((current) => (current ? { ...current, content: event.target.value } : current))
+              }
+            />
+            <footer className="file-editor-actions">
+              <button type="button" onClick={closeFileEditor}>
+                {t.close}
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={fileEditor.loading || fileEditor.saving || fileEditor.content === fileEditor.originalContent}
+                onClick={saveFileEditor}
+              >
+                <Save size={16} />
+                {fileEditor.saving ? `${t.save}...` : t.saveChanges}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
       {connected ? (
         <footer className="metrics-bar">
           <span className="metric-pill">
